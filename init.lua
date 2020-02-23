@@ -1,7 +1,7 @@
 local kfs = component.proxy(computer.getBootAddress())
 local kgpu = component.proxy(component.list("gpu")())
 
-local function ktalk(msg)
+function ktalk(msg)
     local kchat = component.list("chat_box")()
     if kchat then
         component.proxy(kchat).say(msg)
@@ -32,8 +32,8 @@ function kpanic(msg)
     while true do computer.pullSignal() end
 end
 
-function kloadfile(filename, env)
-    local f, err = kfs.open(filename, "r")
+function kreadfile(path)
+    local f, err = kfs.open(path, "r")
     if not f then
         return false, err
     end
@@ -43,7 +43,12 @@ function kloadfile(filename, env)
         if not tmp then break else code = code .. tmp end
     end
     kfs.close(f)
-    return load(code, filename, "t", env)
+    return code
+end
+
+function kloadfile(path, env)
+    local code = kreadfile(path)
+    return load(code, path, "t", env)
 end
 
 function kloadlib(libname, env)
@@ -60,16 +65,14 @@ function kloadlib(libname, env)
     end
 end
 
-local sched = kloadlib("sched")
+kloadlib("utils")
+local sched, process = kloadlib("sched")
 local term = kloadlib("term").create(kgpu)
 term:clear()
-term:print("Hello World")
-for i=1, 50 do
-    term:print("Nice to meet you " .. tostring(i))
-    sched.ksleep(0.1)
-end
 
-sched.ksleep(3)
+computer.beep(1000, 1)
+
+process.createFrom(0, "", "test", kreadfile("home/test.lua"))
 
 sched.start()
 
