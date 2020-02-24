@@ -11,15 +11,12 @@ function sched.ksleep(sec)  -- blocking, should not use
 end
 
 local function KPollEvent()
-    local t = {}
-    while true do
-        local s = table.pack(computer.pullSignal(0))
-        if s[1] then
-            table.insert(t, s)
-            ktalk(string.format("event params: %d", s.n))
-        else break end        
+    local s = table.pack(computer.pullSignal(0))
+    if s[1] then
+        return s
+    else
+        return nil
     end
-    return t
 end
 
 local function KAddEventListener(td, name, timeout, oneshot)
@@ -42,7 +39,6 @@ end
 
 function sched.start()
     while next(process.list) do
-        ktalk("schedule...")
         for pid, pcb in tpairs(process.list) do
             local tcb = pcb.main
             if tcb.status == "ready" then
@@ -61,15 +57,13 @@ function sched.start()
             end
         end
 
-        ktalk("poll event")
-        local events = KPollEvent()
-        for _, event in pairs(events) do
+        local event = KPollEvent()
+        if event then
             if listeners[event[1]] then
                 for tcb, tconf in tpairs(listeners[event[1]]) do
                     tcb.status = "ready"
                     tcb.params = event
                     if tconf.oneshot or computer.uptime() >= tconf.deadline then
-                        ktalk("listener removed")
                         listeners[event[1]][tcb] = nil
                     end
                 end
@@ -79,7 +73,6 @@ function sched.start()
                     tcb.status = "ready"
                     tcb.params = event
                     if tconf.oneshot or computer.uptime() >= tconf.deadline then
-                        ktalk("listener removed")
                         listeners["__any__"][tcb] = nil
                     end
                 end
